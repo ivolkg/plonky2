@@ -35,6 +35,7 @@ pub fn prove<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: 
     let num_challenges = config.num_challenges;
     let quotient_degree = common_data.quotient_degree();
     let degree = common_data.degree();
+    println!("Degree:{}", degree);
 
     let partition_witness = timed!(
         timing,
@@ -51,6 +52,18 @@ pub fn prove<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: 
         partition_witness.full_witness()
     );
 
+    println!("From witness");
+    let witness_matrix = &witness.wire_values;
+    for i in 0..witness_matrix[0].len() {
+        for j in 0..witness_matrix.len() {
+            if (j + 1) % 4 == 0 && j < 80 {
+                print!(">");
+            }
+            print!("[{},{}]{}\t\t", i, j, witness_matrix[j][i]);
+        }
+        print!("\n");
+    }
+
     let wires_values: Vec<PolynomialValues<F>> = timed!(
         timing,
         "compute wire polynomials",
@@ -60,6 +73,16 @@ pub fn prove<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: 
             .map(|column| PolynomialValues::new(column.clone()))
             .collect()
     );
+    println!("From Witness polynomials");
+    for i in 0..wires_values[0].values.len() {
+        for j in 0..wires_values.len() {
+            if (j + 1) % 4 == 0 && j < 80 {
+                print!(">");
+            }
+            print!("[{},{}]{}\t\t", i, j, wires_values[j].values[i]);
+        }
+        print!("\n");
+    }
 
     let wires_commitment = timed!(
         timing,
@@ -73,6 +96,19 @@ pub fn prove<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: 
             prover_data.fft_root_table.as_ref(),
         )
     );
+
+    println!("Wire commitments");
+    let wire_leaves = &wires_commitment.merkle_tree.leaves;
+    for i in 0..wire_leaves.len() {
+        for j in 0..wire_leaves[0].len() {
+            if (j + 1) % 4 == 0 && j < 80 {
+                print!(">");
+            }
+            print!("[{},{}]{}\t\t", i, j, wire_leaves[i][j]);
+        }
+        print!("\n");
+    }
+
 
     let mut challenger = Challenger::<F, C::Hasher>::new();
 
@@ -118,6 +154,7 @@ pub fn prove<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: 
 
     let alphas = challenger.get_n_challenges(num_challenges);
 
+    println!("Compute quotient polynomials...");
     let quotient_polys = timed!(
         timing,
         "compute quotient polys",

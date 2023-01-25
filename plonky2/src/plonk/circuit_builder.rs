@@ -747,9 +747,18 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         // Hash the public inputs, and route them to a `PublicInputGate` which will enforce that
         // those hash wires match the claimed public inputs.
         let num_public_inputs = self.public_inputs.len();
+        println!("public_inputs:{:?}", self.public_inputs);
         let public_inputs_hash =
             self.hash_n_to_hash_no_pad::<C::InnerHasher>(self.public_inputs.clone());
         let pi_gate = self.add_gate(PublicInputGate, vec![]);
+        println!("pi_gate = row: {}", pi_gate);
+        let pi_hash = public_inputs_hash
+            .elements
+            .iter()
+            .zip(PublicInputGate::wires_public_inputs_hash())
+            .collect::<Vec<_>>();
+        println!("pi_hash:{:?}", pi_hash);
+        println!("copy_constraints: {:?}", self.copy_constraints);
         for (&hash_part, wire) in public_inputs_hash
             .elements
             .iter()
@@ -757,9 +766,17 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         {
             self.connect(hash_part, Target::wire(pi_gate, wire))
         }
+        println!("copy_constraints: {:?}", self.copy_constraints);
         self.randomize_unused_pi_wires(pi_gate);
+        println!("copy_constraints: {:?}", self.copy_constraints);
 
         // Make sure we have enough constant generators. If not, add a `ConstantGate`.
+        println!(
+            "constants_to_targets.len() = {} | constant_generators.len() = {}",
+            self.constants_to_targets.len(),
+            self.constant_generators.len()
+        );
+        println!("Constants to targets:\n{:?}", self.constants_to_targets);
         while self.constants_to_targets.len() > self.constant_generators.len() {
             self.add_gate(
                 ConstantGate {
@@ -770,6 +787,14 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         }
 
         // For each constant-target pair used in the circuit, use a constant generator to fill this target.
+        let c_t_const_gen = self
+            .constants_to_targets
+            .clone()
+            .into_iter()
+            .sorted_by_key(|(c, _t)| c.to_canonical_u64())
+            .zip(self.constant_generators.clone())
+            .collect::<Vec<_>>();
+        println!("???:{:?}", c_t_const_gen);
         for ((c, t), mut const_gen) in self
             .constants_to_targets
             .clone()
@@ -787,11 +812,15 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
             const_gen.set_constant(c);
             self.add_simple_generator(const_gen);
         }
+        println!("copy_constraints: {:?}", self.copy_constraints);
 
         debug!(
             "Degree before blinding & padding: {}",
             self.gate_instances.len()
         );
+        // zero-knowledge is not active so does nothing
+        // check if polynomials are in a power of two domain
+        // If not then add NoopGates that do nothing
         self.blind_and_pad();
         let degree = self.gate_instances.len();
         debug!("Degree after blinding & padding: {}", degree);
@@ -808,7 +837,19 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
         gates.sort_unstable_by_key(|g| (g.0.degree(), g.0.id()));
         let (mut constant_vecs, selectors_info) =
             selector_polynomials(&gates, &self.gate_instances, quotient_degree_factor + 1);
+        println!("Selector polynomials");
+        for p in constant_vecs.iter() {
+            println!("{:?}", p);
+        }
+        println!("Constant polys");
+        for p in self.constant_polys() {
+            println!("{:?}", p);
+        }
         constant_vecs.extend(self.constant_polys());
+        println!("Selector & constant polynomials");
+        for p in constant_vecs.iter() {
+            println!("{:?}", p);
+        }
         let num_constants = constant_vecs.len();
 
         let subgroup = F::two_adic_subgroup(degree_bits);
@@ -826,13 +867,18 @@ impl<F: RichField + Extendable<D>, const D: usize> CircuitBuilder<F, D> {
 
         let constants_sigmas_vecs = [constant_vecs, sigma_vecs.clone()].concat();
         let constants_sigmas_commitment = PolynomialBatch::from_values(
-            constants_sigmas_vecs,
+            constants_sigmas_vecs.clone(),
             rate_bits,
             PlonkOracle::CONSTANTS_SIGMAS.blinding,
             cap_height,
             &mut timing,
             Some(&fft_root_table),
         );
+        println!("Selector & constant & sigmas polynomials");
+        for p in constants_sigmas_vecs.iter() {
+            println!("{:?}", p);
+        }
+
 
         // Map between gates where not all generators are used and the gate's number of used generators.
         let incomplete_gates = self

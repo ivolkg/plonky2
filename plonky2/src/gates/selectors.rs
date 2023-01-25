@@ -51,7 +51,11 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
             vec![PolynomialValues::new(
                 instances
                     .iter()
-                    .map(|g| F::from_canonical_usize(index(g.gate_ref.0.id())))
+                    .map(|g| {
+                        let v = F::from_canonical_usize(index(g.gate_ref.0.id()));
+                        println!("{}", v);
+                        v
+                    })
                     .collect(),
             )],
             SelectorsInfo {
@@ -101,6 +105,8 @@ pub(crate) fn selector_polynomials<F: RichField + Extendable<D>, const D: usize>
             };
         }
     }
+    println!("Selector polynomials: {}", polynomials.len());
+    println!("Selector polynomials degree:{}", polynomials[0].len());
 
     (
         polynomials,

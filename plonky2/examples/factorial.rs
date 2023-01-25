@@ -19,10 +19,12 @@ fn main() -> Result<()> {
     // The arithmetic circuit.
     let initial = builder.add_virtual_target();
     let mut cur_target = initial;
-    for i in 2..101 {
+    for i in 2..23 {
         let i_target = builder.constant(F::from_canonical_u32(i));
         cur_target = builder.mul(cur_target, i_target);
+        // println!("ith target:{:?}", i_target);
     }
+    println!("Last target:{:?}", cur_target);
 
     // Public inputs are the initial value (provided below) and the result (which is generated).
     builder.register_public_input(initial);

@@ -107,7 +107,8 @@ impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
         // If blinding, salt with two random elements to each leaf vector.
         let salt_size = if blinding { SALT_SIZE } else { 0 };
 
-        polynomials
+        // println!("From lde_values");
+        let polys: Vec<_> = polynomials
             .par_iter()
             .map(|p| {
                 assert_eq!(p.len(), degree, "Polynomial degrees inconsistent");
@@ -120,7 +121,17 @@ impl<F: RichField + Extendable<D>, C: GenericConfig<D, F = F>, const D: usize>
                     .into_par_iter()
                     .map(|_| F::rand_vec(degree << rate_bits)),
             )
-            .collect()
+            .collect();
+        // for i in 0..polys[0].len() {
+        //     for j in 0..polys.len() {
+        //         if (j + 1) % 4 == 0 && j < 80 {
+        //             print!(">");
+        //         }
+        //         print!("[{},{}]{}", i, j, polys[j][i]);
+        //     }
+        //     print!("\n");
+        // }
+        polys
     }
 
     /// Fetches LDE values at the `index * step`th point.

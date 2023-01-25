@@ -21,11 +21,12 @@ fn main() -> Result<()> {
     let initial_b = builder.add_virtual_target();
     let mut prev_target = initial_a;
     let mut cur_target = initial_b;
-    for _ in 0..99 {
+    for _ in 0..9 {
         let temp = builder.add(prev_target, cur_target);
         prev_target = cur_target;
         cur_target = temp;
     }
+    println!("Last gate target:{:?}", cur_target);
 
     // Public inputs are the two initial values (provided below) and the result (which is generated).
     builder.register_public_input(initial_a);
@@ -41,7 +42,7 @@ fn main() -> Result<()> {
     let proof = data.prove(pw)?;
 
     println!(
-        "100th Fibonacci number mod |F| (starting with {}, {}) is: {}",
+        "10th Fibonacci number mod |F| (starting with {}, {}) is: {}",
         proof.public_inputs[0], proof.public_inputs[1], proof.public_inputs[2]
     );
 
